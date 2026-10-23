@@ -19,8 +19,8 @@ interface SearchArgs {
 }
 
 interface BraveSearchResult {
-	title: string;
-	url: string;
+	title?: string;
+	url?: string;
 	description?: string;
 }
 
@@ -29,6 +29,20 @@ interface BraveSearchResponse {
 		results?: BraveSearchResult[];
 	};
 }
+
+const escapeMarkdownInline = (text: string): string =>
+	text
+		.replace(/<\/?strong>/gi, '')
+		.replace(/\s+/g, ' ')
+		.trim()
+		.replace(/[\\`*_[\]<>~|=]/g, '\\$&')
+		.replace(/^[#+-]/, '\\$&')
+		.replace(/^(\d+)([.)])/, '$1\\$2');
+
+const sanitizeUrl = (url: string): string | undefined => {
+	const stripped = url.replace(/[\s<>]/g, '');
+	return /^https?:\/\//i.test(stripped) ? stripped : undefined;
+};
 
 export const executeWebSearch = async (
 	args: SearchArgs,
@@ -80,10 +94,11 @@ export const executeWebSearch = async (
 		for (let i = 0; i < results.length; i++) {
 			const result = results[i];
 			if (!result) continue;
-			formattedResults += `## ${i + 1}. ${result.title}\n\n`;
-			formattedResults += `**URL:** ${result.url}\n\n`;
+			const url = sanitizeUrl(result.url ?? '');
+			formattedResults += `## ${i + 1}. ${escapeMarkdownInline(result.title ?? '')}\n\n`;
+			formattedResults += `**URL:** ${url ? `<${url}>` : '(unsupported URL omitted)'}\n\n`;
 			if (result.description) {
-				formattedResults += `${result.description}\n\n`;
+				formattedResults += `${escapeMarkdownInline(result.description)}\n\n`;
 			}
 			formattedResults += '---\n\n';
 		}
